@@ -4,6 +4,13 @@ namespace LegacyRenewalApp
 {
     public class SubscriptionRenewalService
     {
+        private readonly IDiscountStrategy _strategy;
+        private readonly DiscountStrategyFactory _discountStrategyFactory;
+        
+        public SubscriptionRenewalService ()
+        {
+            _discountStrategyFactory = new DiscountStrategyFactory();
+        }
         public RenewalInvoice CreateRenewalInvoice(
             int customerId,
             string planCode,
@@ -47,30 +54,11 @@ namespace LegacyRenewalApp
             }
 
             decimal baseAmount = (plan.MonthlyPricePerSeat * seatCount * 12m) + plan.SetupFee;
-            decimal discountAmount = 0m;
-            string notes = string.Empty;
+            var strategy =  _discountStrategyFactory.GetStrategy(customer,plan);
+            decimal discountAmount = strategy.CalculateDiscount(baseAmount);
+            string notes = strategy.notes;
 
-            if (customer.Segment == "Silver")
-            {
-                discountAmount += baseAmount * 0.05m;
-                notes += "silver discount; ";
-            }
-            else if (customer.Segment == "Gold")
-            {
-                discountAmount += baseAmount * 0.10m;
-                notes += "gold discount; ";
-            }
-            else if (customer.Segment == "Platinum")
-            {
-                discountAmount += baseAmount * 0.15m;
-                notes += "platinum discount; ";
-            }
-            else if (customer.Segment == "Education" && plan.IsEducationEligible)
-            {
-                discountAmount += baseAmount * 0.20m;
-                notes += "education discount; ";
-            }
-
+           
             if (customer.YearsWithCompany >= 5)
             {
                 discountAmount += baseAmount * 0.07m;
